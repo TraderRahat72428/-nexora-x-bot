@@ -1055,7 +1055,7 @@ def menu(message):
 
         # USER BUTTONS
 
-        if text == "💰 Balance":
+        elif text == "💰 Balance":
             data = get_user(message.from_user).get().to_dict()
 
             bot.reply_to(
