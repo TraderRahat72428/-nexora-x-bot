@@ -608,7 +608,7 @@ def menu(message):
         if state:
 
             step = state["step"]
-                        # TASK ORDER STATES
+        # TASK ORDER STATES
 
             if step == "task_link":
                 if not text.startswith(("https://", "http://")):
@@ -1023,7 +1023,34 @@ def menu(message):
         elif text == "🎙️ Podcasts":
             show_podcasts(chat_id)
             return
-             
+                         elif text == "🎙️ Manage Podcasts":
+                kb = ReplyKeyboardMarkup(resize_keyboard=True)
+                kb.row("➕ Upload Podcast", "📚 Podcast List")
+                kb.row("🔙 Main Menu")
+
+                bot.send_message(
+                    chat_id,
+                    "🎙️ PODCAST MANAGEMENT",
+                    reply_markup=kb
+                )
+                return
+
+            elif text == "➕ Upload Podcast":
+                states[chat_id] = {"step": "podcast_title"}
+
+                bot.send_message(
+                    chat_id,
+                    "🎙️ Send Podcast Title:"
+                )
+                return
+
+            elif text == "📚 Podcast List":
+                show_admin_podcasts(chat_id)
+                return
+
+            elif text == "📋 Service Orders":
+                show_service_orders(chat_id)
+                return
 
         # USER BUTTONS
 
@@ -1063,17 +1090,53 @@ def menu(message):
             )
 
         elif text == "📦 Orders":
-            bot.reply_to(
-                message,
-                "📦 You have no orders yet."
+            orders = list(
+                db.collection("service_orders")
+                .where("user_id", "==", str(uid))
+                .limit(20)
+                .stream()
             )
+
+            if not orders:
+                bot.reply_to(message, "📦 You have no orders yet.")
+                return
+
+            for doc in orders:
+                d = doc.to_dict()
+
+                bot.send_message(
+                    chat_id,
+                    f"📦 ORDER: {doc.id}\n"
+                    f"💼 Service: {d.get('service')}\n"
+                    f"📌 Status: {d.get('status')}"
+                )
+            return
 
         elif text == "📞 Support":
             bot.reply_to(
                 message,
                 "📞 Contact Admin for support."
             )
+        elif text == "💼 Tasks":
+            show_tasks(chat_id)
+            return
 
+        elif text in SERVICES:
+            states[chat_id] = {
+                "step": "task_link",
+                "service": SERVICES[text]
+            }
+
+            bot.send_message(
+                chat_id,
+                f"{text}\n\n"
+                "🌐 Send Facebook Page / Profile Link:"
+            )
+            return
+
+        elif text == "🎙️ Podcasts":
+            show_podcasts(chat_id)
+            return
         else:
             bot.reply_to(
                 message,
