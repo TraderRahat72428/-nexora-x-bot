@@ -1003,6 +1003,7 @@ def menu(message):
                     "Use /cancel to stop."
                 )
                 return
+               
                         elif text == "💼 Tasks":
             show_tasks(chat_id)
             return
