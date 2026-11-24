@@ -1,4 +1,4 @@
-import os
+aimport os
 import json
 import telebot
 import firebase_admin
@@ -509,7 +509,13 @@ def menu(message):
                 states[chat_id]["method"] = text
                 states[chat_id]["step"] = "deposit_amount"
 
-                bot.reply_to(message, "💰 Send deposit amount:")
+                bot.send_message(
+    message.chat.id,
+    "💰 Send deposit amount:\n\n"
+    "💳 bKash Personal: 01644053747\n"
+    "💳 Nagad Personal: 01644053747\n\n"
+    "📌 Send your deposit amount below."
+                )
                 return
 
             elif step == "deposit_amount":
