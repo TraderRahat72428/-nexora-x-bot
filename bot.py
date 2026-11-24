@@ -357,14 +357,22 @@ def menu(message):
     try:
         get_user(message.from_user)
 
-        # CANCEL ACTIVE OPERATION
+           # CANCEL ACTIVE OPERATION
         if text == "🔙 Main Menu":
             cancel_state(chat_id)
-            bot.send_message(
-                chat_id,
-                "🏠 Main Menu",
-                reply_markup=main_keyboard()
-            )
+
+            if is_admin(uid):
+                bot.send_message(
+                    chat_id,
+                    "👑 Admin Main Menu",
+                    reply_markup=admin_keyboard()
+                )
+            else:
+                bot.send_message(
+                    chat_id,
+                    "🏠 Main Menu",
+                    reply_markup=main_keyboard()
+                )
             return
 
         state = states.get(chat_id)
