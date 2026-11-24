@@ -8,6 +8,7 @@ from firebase_admin import credentials, firestore
 from telebot.types import ReplyKeyboardMarkup
 
 TOKEN = os.getenv("BOT_TOKEN")
+OWNER_ID = 6114927842
 FIREBASE_KEY = os.getenv("FIREBASE_SERVICE_ACCOUNT")
 
 if not TOKEN:
@@ -38,7 +39,8 @@ def get_user(user):
             "balance": 0,
             "created_at": firestore.SERVER_TIMESTAMP
         })
-
+def is_admin(user_id):
+    return user_id == OWNER_ID
     return ref
 
 
