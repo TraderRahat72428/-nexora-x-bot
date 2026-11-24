@@ -48,6 +48,29 @@ def is_admin(user_id):
 
 
 
+
+from telebot.types import ReplyKeyboardMarkup
+
+def admin_keyboard():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.row("👑 Admin Dashboard")
+    kb.row("💰 Manage Balance", "💳 Deposits")
+    kb.row("🎁 Gift Codes", "👥 Users")
+    kb.row("📢 Broadcast", "🔙 Main Menu")
+    return kb
+
+
+@bot.message_handler(commands=['admin'])
+def admin_panel(message):
+    if not is_admin(message.from_user.id):
+        bot.reply_to(message, "⛔ Access Denied!")
+        return
+
+    bot.send_message(
+        message.chat.id,
+        "👑 NEXORA Xe ADMIN PANEL\n\nWelcome, Owner!",
+        reply_markup=admin_keyboard()
+    )
 @bot.message_handler(commands=['start'])
 def start(message):
     try:
