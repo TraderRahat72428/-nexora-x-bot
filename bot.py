@@ -26,7 +26,6 @@ if not firebase_admin._apps:
 db = firestore.client()
 bot = telebot.TeleBot(TOKEN)
 
-
 def get_user(user):
     user_id = str(user.id)
     ref = db.collection("users").document(user_id)
@@ -39,9 +38,14 @@ def get_user(user):
             "balance": 0,
             "created_at": firestore.SERVER_TIMESTAMP
         })
+
+    return ref
+
+
 def is_admin(user_id):
     return user_id == OWNER_ID
-    return ref
+
+
 
 
 @bot.message_handler(commands=['start'])
