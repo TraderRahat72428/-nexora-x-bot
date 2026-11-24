@@ -562,6 +562,7 @@ def menu(message):
                     f"👤 User: {uid}\n"
                     f"💰 Amount: {state['amount']} BDT\n"
                     f"💳 Method: {state['method']}"
+                    f"🔑 TXID: {text}"
                 )
                 return
 
