@@ -1003,6 +1003,27 @@ def menu(message):
                     "Use /cancel to stop."
                 )
                 return
+                        elif text == "💼 Tasks":
+            show_tasks(chat_id)
+            return
+
+        elif text in SERVICES:
+            states[chat_id] = {
+                "step": "task_link",
+                "service": SERVICES[text]
+            }
+
+            bot.send_message(
+                chat_id,
+                f"{text}\n\n"
+                "🌐 Send Facebook Page / Profile Link:"
+            )
+            return
+
+        elif text == "🎙️ Podcasts":
+            show_podcasts(chat_id)
+            return
+             
 
         # USER BUTTONS
 
