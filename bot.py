@@ -1,4 +1,4 @@
-aimport os
+import os
 import json
 import telebot
 import firebase_admin
