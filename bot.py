@@ -1,4 +1,3 @@
-
 import os
 import json
 import re
@@ -246,20 +245,17 @@ def redeem_gift(uid, code):
 # =====================================
 
 SERVICES = {
-    "🌐 Facebook Marketing Service":
-        "Facebook Marketing Service",
-    "✉️ Gmail Setup Service":
-        "Gmail Setup Service",
-    "🌸 Instagram Marketing Service":
-        "Instagram Marketing Service"
+    "🌐 Facebook Sell": "Facebook Sell",
+    "✉️ Gmail Sell": "Gmail Sell",
+    "🌸 Instagram Sell": "Instagram Sell"
 }
 
 
 def show_tasks(chat_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.row("🌐 Facebook Marketing Service")
-    kb.row("✉️ Gmail Setup Service")
-    kb.row("🌸 Instagram Marketing Service")
+    kb.row("🌐 Facebook Sell")
+    kb.row("✉️ Gmail Sell")
+    kb.row("🌸 Instagram Sell")
     kb.row("🏠 Main Menu")
 
     bot.send_message(
