@@ -6,6 +6,7 @@ import telebot
 import firebase_admin
 
 from firebase_admin import credentials, firestore
+from firebase_admin.firestore import FieldFilter
 from telebot.types import (
     ReplyKeyboardMarkup,
     InlineKeyboardMarkup,
@@ -32,6 +33,9 @@ bot = telebot.TeleBot(TOKEN)
 
 states = {}
 
+BKASH_NUMBER = "01786142570"
+NAGAD_NUMBER = "01644053747"
+BINANCE_UID = "987753103"
 
 # =====================================
 # USER SYSTEM
@@ -60,10 +64,6 @@ def cancel_state(chat_id):
     states.pop(chat_id, None)
 
 
-# =====================================
-# KEYBOARDS
-# =====================================
-
 def main_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("🛍️ Shop", "💰 Balance")
@@ -85,7 +85,7 @@ def admin_keyboard():
 
 
 # =====================================
-# START COMMAND
+# START
 # =====================================
 
 @bot.message_handler(commands=["start"])
@@ -94,28 +94,20 @@ def start(message):
         cancel_state(message.chat.id)
         get_user(message.from_user)
 
-        kb = (
-            admin_keyboard()
-            if is_admin(message.from_user.id)
-            else main_keyboard()
-        )
+        kb = admin_keyboard() if is_admin(
+            message.from_user.id
+        ) else main_keyboard()
 
         bot.send_message(
             message.chat.id,
             "🚀 Welcome to NEXORA Xe!\n\n"
             "💎 Your Digital Shopping Platform\n\n"
-            "Choose an option below:",
+            "✨ Choose an option below:",
             reply_markup=kb
         )
-
     except Exception as e:
         print("Start error:", e)
-        bot.reply_to(message, "Please try again later.")
 
-
-# =====================================
-# ADMIN COMMAND
-# =====================================
 
 @bot.message_handler(commands=["admin"])
 def admin_panel(message):
@@ -124,27 +116,20 @@ def admin_panel(message):
         return
 
     cancel_state(message.chat.id)
-
     bot.send_message(
         message.chat.id,
-        "👑 NEXORA Xe ADMIN PANEL\n\nWelcome, Owner!",
+        "👑 NEXORA Xe ADMIN PANEL",
         reply_markup=admin_keyboard()
     )
 
-
-# =====================================
-# CANCEL COMMAND
-# =====================================
 
 @bot.message_handler(commands=["cancel"])
 def cancel(message):
     cancel_state(message.chat.id)
 
-    kb = (
-        admin_keyboard()
-        if is_admin(message.from_user.id)
-        else main_keyboard()
-    )
+    kb = admin_keyboard() if is_admin(
+        message.from_user.id
+    ) else main_keyboard()
 
     bot.send_message(
         message.chat.id,
@@ -167,7 +152,7 @@ def show_dashboard(chat_id):
 
     pending = list(
         db.collection("deposits")
-        .where("status", "==", "pending")
+        .where(filter=FieldFilter("status", "==", "pending"))
         .stream()
     )
 
@@ -182,7 +167,7 @@ def show_dashboard(chat_id):
 
 
 # =====================================
-# BALANCE MANAGEMENT
+# BALANCE
 # =====================================
 
 def update_balance(uid, amount, action):
@@ -198,18 +183,16 @@ def update_balance(uid, amount, action):
         return False, "Insufficient balance."
 
     new_balance = (
-        current + amount
-        if action == "add"
+        current + amount if action == "add"
         else current - amount
     )
 
     ref.update({"balance": new_balance})
-
     return True, new_balance
 
 
 # =====================================
-# GIFT CODE REDEMPTION
+# GIFT CODE
 # =====================================
 
 def redeem_gift(uid, code):
@@ -238,7 +221,9 @@ def redeem_gift(uid, code):
         if amount <= 0:
             return "invalid"
 
-        if not user_ref.get(transaction=transaction).exists:
+        user_doc = user_ref.get(transaction=transaction)
+
+        if not user_doc.exists:
             return "user_missing"
 
         transaction.update(
@@ -257,19 +242,21 @@ def redeem_gift(uid, code):
 
 
 # =====================================
-# TASKS SYSTEM
+# SERVICES
 # =====================================
 
 SERVICES = {
-    "🌐 Facebook Marketing Service": "Facebook Marketing Service",
-    "✉️ Gmail Setup Service": "Gmail Setup Service",
-    "🌸 Instagram Marketing Service": "Instagram Marketing Service"
+    "🌐 Facebook Marketing Service":
+        "Facebook Marketing Service",
+    "✉️ Gmail Setup Service":
+        "Gmail Setup Service",
+    "🌸 Instagram Marketing Service":
+        "Instagram Marketing Service"
 }
 
 
 def show_tasks(chat_id):
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
-
     kb.row("🌐 Facebook Marketing Service")
     kb.row("✉️ Gmail Setup Service")
     kb.row("🌸 Instagram Marketing Service")
@@ -277,8 +264,7 @@ def show_tasks(chat_id):
 
     bot.send_message(
         chat_id,
-        "💼 NEXORA Xe SERVICES\n\n"
-        "✨ Select Your Service:",
+        "💼 NEXORA Xe SERVICES\n\n✨ Select Your Service:",
         reply_markup=kb
     )
 
@@ -392,10 +378,7 @@ def podcast_callback(call):
         doc = ref.get()
 
         if not doc.exists:
-            bot.answer_callback_query(
-                call.id,
-                "Podcast not found."
-            )
+            bot.answer_callback_query(call.id, "Podcast not found.")
             return
 
         data = doc.to_dict()
@@ -423,10 +406,7 @@ def podcast_callback(call):
 
         elif action == "delete":
             if not is_admin(call.from_user.id):
-                bot.answer_callback_query(
-                    call.id,
-                    "Access denied!"
-                )
+                bot.answer_callback_query(call.id, "Access denied!")
                 return
 
             ref.delete()
@@ -445,7 +425,7 @@ def podcast_callback(call):
 
 
 # =====================================
-# RECEIVE PODCAST MEDIA
+# RECEIVE PODCAST
 # =====================================
 
 @bot.message_handler(content_types=["audio", "video"])
@@ -463,14 +443,9 @@ def receive_podcast(message):
         if message.audio:
             media_type = "audio"
             file_id = message.audio.file_id
-
-        elif message.video:
+        else:
             media_type = "video"
             file_id = message.video.file_id
-
-        else:
-            bot.reply_to(message, "Send Audio or Video.")
-            return
 
         title = state["title"]
         category = state["category"]
@@ -507,7 +482,7 @@ def receive_podcast(message):
 def show_deposits(chat_id):
     deposits = list(
         db.collection("deposits")
-        .where("status", "==", "pending")
+        .where(filter=FieldFilter("status", "==", "pending"))
         .limit(20)
         .stream()
     )
@@ -536,7 +511,7 @@ def show_deposits(chat_id):
             "💳 DEPOSIT REQUEST\n\n"
             f"🆔 Request: {doc.id}\n"
             f"👤 User: {d.get('user_id')}\n"
-            f"💰 Amount: {d.get('amount')} BDT\n"
+            f"💰 Amount: {d.get('amount')} {d.get('currency', 'BDT')}\n"
             f"💳 Method: {d.get('method')}\n"
             f"🧾 Transaction: {d.get('transaction_id')}",
             reply_markup=kb
@@ -594,11 +569,7 @@ def process_deposit(call):
                     }
                 )
 
-            status = (
-                "approved"
-                if action == "approve"
-                else "rejected"
-            )
+            status = "approved" if action == "approve" else "rejected"
 
             transaction.update(
                 dep_ref,
@@ -616,7 +587,7 @@ def process_deposit(call):
             bot.send_message(
                 int(data["user_id"]),
                 "✅ Deposit Approved!\n"
-                f"💰 Added: {data['amount']} BDT"
+                f"💰 Added: {data['credit_amount']} BDT"
             )
 
         elif result == "rejected":
@@ -652,16 +623,10 @@ def menu(message):
     try:
         get_user(message.from_user)
 
-        # MAIN MENU BUTTON
-
         if text == "🏠 Main Menu":
             cancel_state(chat_id)
 
-            kb = (
-                admin_keyboard()
-                if is_admin(uid)
-                else main_keyboard()
-            )
+            kb = admin_keyboard() if is_admin(uid) else main_keyboard()
 
             bot.send_message(
                 chat_id,
@@ -670,44 +635,30 @@ def menu(message):
             )
             return
 
-        # CONVERSATION STATES
-
         state = states.get(chat_id)
 
         if state:
             step = state["step"]
 
-            # TASK ORDER STATES
-
+            # SERVICE ORDER
             if step == "task_link":
                 if not text.startswith(("https://", "http://")):
                     bot.reply_to(message, "🌐 Send a valid link.")
                     return
 
-                states[chat_id]["page_link"] = text
-                states[chat_id]["step"] = "task_email"
-
-                bot.reply_to(
-                    message,
-                    "📧 Send your Contact Email:"
-                )
+                state["page_link"] = text
+                state["step"] = "task_email"
+                bot.reply_to(message, "📧 Send your Contact Email:")
                 return
 
             elif step == "task_email":
-                if not re.match(
-                    r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-                    text
-                ):
+                if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", text):
                     bot.reply_to(message, "❌ Invalid Email.")
                     return
 
-                states[chat_id]["email"] = text
-                states[chat_id]["step"] = "task_details"
-
-                bot.reply_to(
-                    message,
-                    "📋 Send your Service Details:"
-                )
+                state["email"] = text
+                state["step"] = "task_details"
+                bot.reply_to(message, "📋 Send your Service Details:")
                 return
 
             elif step == "task_details":
@@ -727,14 +678,12 @@ def menu(message):
 
                 ref = db.collection("service_orders").document()
                 ref.set(order)
-
                 cancel_state(chat_id)
 
                 bot.reply_to(
                     message,
-                    "✅ ORDER SUBMITTED!\n\n"
+                    "✅ ORDER SUBMITTED!\n"
                     f"🆔 Order ID: {ref.id}\n"
-                    f"💼 Service: {order['service']}\n"
                     "⏳ Waiting for Admin.",
                     reply_markup=main_keyboard()
                 )
@@ -751,16 +700,14 @@ def menu(message):
                 )
                 return
 
-            # PODCAST UPLOAD STATES
-
+            # PODCAST
             elif step == "podcast_title":
                 if not text or len(text) > 100:
                     bot.reply_to(message, "Invalid title.")
                     return
 
-                states[chat_id]["title"] = text
-                states[chat_id]["step"] = "podcast_category"
-
+                state["title"] = text
+                state["step"] = "podcast_category"
                 bot.reply_to(message, "🏷️ Send Podcast Category:")
                 return
 
@@ -769,8 +716,8 @@ def menu(message):
                     bot.reply_to(message, "Invalid category.")
                     return
 
-                states[chat_id]["category"] = text
-                states[chat_id]["step"] = "podcast_media"
+                state["category"] = text
+                state["step"] = "podcast_media"
 
                 bot.reply_to(
                     message,
@@ -779,22 +726,17 @@ def menu(message):
                 return
 
             elif step == "podcast_media":
-                bot.reply_to(
-                    message,
-                    "⚠️ Please send Audio or Video."
-                )
+                bot.reply_to(message, "⚠️ Please send Audio or Video.")
                 return
 
-            # BALANCE MANAGEMENT STATES
-
+            # BALANCE MANAGEMENT
             elif step == "balance_user":
                 if not text.isdigit():
                     bot.reply_to(message, "Send a valid User ID.")
                     return
 
-                states[chat_id]["user_id"] = text
-                states[chat_id]["step"] = "balance_amount"
-
+                state["user_id"] = text
+                state["step"] = "balance_amount"
                 bot.reply_to(message, "💰 Send amount in BDT:")
                 return
 
@@ -802,7 +744,7 @@ def menu(message):
                 try:
                     amount = float(text)
                     if amount <= 0:
-                        raise ValueError()
+                        raise ValueError
                 except ValueError:
                     bot.reply_to(message, "Invalid amount.")
                     return
@@ -827,29 +769,26 @@ def menu(message):
                     try:
                         bot.send_message(
                             int(target_uid),
-                            "💰 Your balance has been updated.\n"
+                            f"💰 Your balance has been updated.\n"
                             f"New balance: {result} BDT"
                         )
                     except Exception:
                         pass
-
                 else:
                     bot.reply_to(message, f"❌ {result}")
 
                 return
 
-            # GIFT CODE CREATION
-
+            # GIFT CODE CREATE
             elif step == "gift_code":
                 code = text.upper()
 
                 if len(code) < 3 or len(code) > 40:
-                    bot.reply_to(message, "Invalid code. Try again.")
+                    bot.reply_to(message, "Invalid code.")
                     return
 
-                states[chat_id]["code"] = code
-                states[chat_id]["step"] = "gift_amount"
-
+                state["code"] = code
+                state["step"] = "gift_amount"
                 bot.reply_to(message, "🎁 Send gift code amount:")
                 return
 
@@ -857,7 +796,7 @@ def menu(message):
                 try:
                     amount = float(text)
                     if amount <= 0:
-                        raise ValueError()
+                        raise ValueError
                 except ValueError:
                     bot.reply_to(message, "Invalid amount.")
                     return
@@ -867,7 +806,6 @@ def menu(message):
 
                 if ref.get().exists:
                     bot.reply_to(message, "❌ Code already exists.")
-
                 else:
                     ref.set({
                         "code": code,
@@ -879,89 +817,93 @@ def menu(message):
 
                     bot.reply_to(
                         message,
-                        "✅ Gift Code Created!\n\n"
+                        "✅ Gift Code Created!\n"
                         f"🎁 Code: {code}\n"
-                        f"💰 Amount: {amount} BDT"
+                        f"💰 Amount: {amount} BDT",
+                        reply_markup=admin_keyboard()
                     )
 
                 cancel_state(chat_id)
                 return
 
-            # GIFT CODE REDEMPTION
-
+            # GIFT REDEEM
             elif step == "redeem":
-                code = text.upper()
-
-                result = redeem_gift(uid, code)
+                result = redeem_gift(uid, text.upper())
                 cancel_state(chat_id)
 
                 if result == "invalid":
                     bot.reply_to(message, "❌ Invalid gift code.")
-
                 elif result == "inactive":
                     bot.reply_to(message, "❌ Gift code inactive.")
-
                 elif result == "used":
-                    bot.reply_to(
-                        message,
-                        "❌ You already used this code."
-                    )
-
+                    bot.reply_to(message, "❌ You already used this code.")
                 elif result == "user_missing":
-                    bot.reply_to(
-                        message,
-                        "❌ User account not found."
-                    )
-
+                    bot.reply_to(message, "❌ User account not found.")
                 else:
                     bot.reply_to(
                         message,
-                        "🎉 Gift Redeemed!\n"
-                        f"💰 Added: {result} BDT"
+                        f"🎉 Gift Redeemed!\n💰 Added: {result} BDT"
                     )
-
                 return
 
-            # DEPOSIT STATES
-
+            # DEPOSIT METHOD
             elif step == "deposit_method":
-                if text not in ["bKash", "Nagad", "USDT"]:
+                if text not in ["bKash", "Nagad", "Binance"]:
                     bot.reply_to(
                         message,
-                        "Choose bKash, Nagad or USDT."
+                        "Choose bKash, Nagad or Binance."
                     )
                     return
 
-                states[chat_id]["method"] = text
-                states[chat_id]["step"] = "deposit_amount"
+                state["method"] = text
+                state["step"] = "deposit_amount"
+
+                if text == "bKash":
+                    details = f"💗 bKash Personal: {BKASH_NUMBER}"
+                elif text == "Nagad":
+                    details = f"🧡 Nagad Personal: {NAGAD_NUMBER}"
+                else:
+                    details = (
+                        f"💛 Binance UID: {BINANCE_UID}\n"
+                        "💰 Send USDT using Binance internal transfer."
+                    )
 
                 bot.send_message(
                     chat_id,
-                    "💰 Send deposit amount:\n\n"
-                    "💳 bKash Personal: 01644053747\n"
-                    "💳 Nagad Personal: 01644053747\n\n"
-                    "📌 Send your deposit amount below."
+                    f"💳 Payment Method: {text}\n\n"
+                    f"{details}\n\n"
+                    "📌 Send your deposit amount:"
                 )
                 return
 
+            # DEPOSIT AMOUNT
             elif step == "deposit_amount":
                 try:
                     amount = float(text)
-                    if amount <= 0:
-                        raise ValueError()
+                    if amount <= 0 or amount > 10000000:
+                        raise ValueError
                 except ValueError:
                     bot.reply_to(message, "Invalid amount.")
                     return
 
-                states[chat_id]["amount"] = amount
-                states[chat_id]["step"] = "deposit_reference"
+                state["amount"] = amount
 
-                bot.reply_to(
-                    message,
-                    "🧾 Send your transaction ID / payment reference:"
-                )
+                if state["method"] == "Binance":
+                    state["step"] = "deposit_reference"
+                    bot.reply_to(
+                        message,
+                        "💛 Send the Binance Transfer ID / TXID:\n\n"
+                        "⚠️ Admin will verify your transfer."
+                    )
+                else:
+                    state["step"] = "deposit_reference"
+                    bot.reply_to(
+                        message,
+                        "🧾 Send your transaction ID / payment reference:"
+                    )
                 return
 
+            # DEPOSIT REFERENCE
             elif step == "deposit_reference":
                 if not text or len(text) > 150:
                     bot.reply_to(message, "Invalid reference.")
@@ -970,11 +912,23 @@ def menu(message):
                 amount = state["amount"]
                 method = state["method"]
 
+                # This bot keeps all user balances in BDT.
+                # Binance amount must be manually verified and converted
+                # by admin before approval.
+                if method == "Binance":
+                    credit_amount = 0
+                    currency = "USDT"
+                else:
+                    credit_amount = amount
+                    currency = "BDT"
+
                 ref = db.collection("deposits").document()
 
                 ref.set({
                     "user_id": str(uid),
                     "amount": amount,
+                    "credit_amount": credit_amount,
+                    "currency": currency,
                     "method": method,
                     "transaction_id": text,
                     "status": "pending",
@@ -986,23 +940,23 @@ def menu(message):
                 bot.reply_to(
                     message,
                     "✅ Deposit Request Submitted!\n"
-                    "⏳ Waiting for Admin Approval.",
+                    "⏳ Waiting for Admin Verification.",
                     reply_markup=main_keyboard()
                 )
 
                 bot.send_message(
                     OWNER_ID,
-                    "💳 New Deposit Request!\n"
+                    "💳 NEW DEPOSIT REQUEST!\n\n"
                     f"🆔 ID: {ref.id}\n"
                     f"👤 User: {uid}\n"
-                    f"💰 Amount: {amount} BDT\n"
+                    f"💰 Amount: {amount} {currency}\n"
                     f"💳 Method: {method}\n"
-                    f"🔑 TXID: {text}"
+                    f"🔑 TXID: {text}\n\n"
+                    "⚠️ Verify payment before approval."
                 )
                 return
 
-            # BROADCAST STATE
-
+            # BROADCAST
             elif step == "broadcast":
                 if not is_admin(uid):
                     cancel_state(chat_id)
@@ -1010,7 +964,6 @@ def menu(message):
                     return
 
                 cancel_state(chat_id)
-
                 sent = 0
 
                 for user_doc in db.collection("users").stream():
@@ -1044,7 +997,6 @@ def menu(message):
                 kb = ReplyKeyboardMarkup(resize_keyboard=True)
                 kb.row("➕ Add Balance", "➖ Remove Balance")
                 kb.row("🏠 Main Menu")
-
                 bot.send_message(
                     chat_id,
                     "💰 Choose Balance Action:",
@@ -1052,28 +1004,12 @@ def menu(message):
                 )
                 return
 
-            elif text == "➕ Add Balance":
+            elif text in ["➕ Add Balance", "➖ Remove Balance"]:
                 states[chat_id] = {
                     "step": "balance_user",
-                    "action": "add"
+                    "action": "add" if text == "➕ Add Balance" else "remove"
                 }
-
-                bot.send_message(
-                    chat_id,
-                    "Send User Telegram ID:"
-                )
-                return
-
-            elif text == "➖ Remove Balance":
-                states[chat_id] = {
-                    "step": "balance_user",
-                    "action": "remove"
-                }
-
-                bot.send_message(
-                    chat_id,
-                    "Send User Telegram ID:"
-                )
+                bot.send_message(chat_id, "Send User Telegram ID:")
                 return
 
             elif text == "💳 Deposits":
@@ -1082,17 +1018,11 @@ def menu(message):
 
             elif text == "🎁 Gift Codes":
                 states[chat_id] = {"step": "gift_code"}
-
-                bot.send_message(
-                    chat_id,
-                    "Send a new unique Gift Code:"
-                )
+                bot.send_message(chat_id, "Send a new unique Gift Code:")
                 return
 
             elif text == "👥 Users":
-                users = list(
-                    db.collection("users").limit(200).stream()
-                )
+                users = list(db.collection("users").limit(200).stream())
 
                 if not users:
                     bot.send_message(chat_id, "No users found.")
@@ -1100,7 +1030,6 @@ def menu(message):
 
                 for u in users:
                     d = u.to_dict()
-
                     bot.send_message(
                         chat_id,
                         f"👤 User ID: {u.id}\n"
@@ -1110,18 +1039,13 @@ def menu(message):
 
             elif text == "📢 Broadcast":
                 states[chat_id] = {"step": "broadcast"}
-
-                bot.send_message(
-                    chat_id,
-                    "📢 Send your announcement message:"
-                )
+                bot.send_message(chat_id, "📢 Send your announcement:")
                 return
 
             elif text == "🎙️ Manage Podcasts":
                 kb = ReplyKeyboardMarkup(resize_keyboard=True)
                 kb.row("➕ Upload Podcast", "📚 Podcast List")
                 kb.row("🏠 Main Menu")
-
                 bot.send_message(
                     chat_id,
                     "🎙️ PODCAST MANAGEMENT",
@@ -1131,11 +1055,7 @@ def menu(message):
 
             elif text == "➕ Upload Podcast":
                 states[chat_id] = {"step": "podcast_title"}
-
-                bot.send_message(
-                    chat_id,
-                    "📝 Send Podcast Title:"
-                )
+                bot.send_message(chat_id, "📝 Send Podcast Title:")
                 return
 
             elif text == "📚 Podcast List":
@@ -1152,7 +1072,6 @@ def menu(message):
 
         if text == "💰 Balance":
             data = get_user(message.from_user).get().to_dict()
-
             bot.reply_to(
                 message,
                 f"💰 Your Balance: {data.get('balance', 0)} BDT"
@@ -1160,54 +1079,48 @@ def menu(message):
             return
 
         elif text == "🛍️ Shop":
-            bot.send_message(
-                chat_id,
-                "🛍️ Shop Coming Soon!"
-            )
+            bot.send_message(chat_id, "🛍️ Shop Coming Soon!")
             return
 
         elif text == "💳 Deposit":
             kb = ReplyKeyboardMarkup(resize_keyboard=True)
             kb.row("bKash", "Nagad")
-            kb.row("USDT")
+            kb.row("Binance")
             kb.row("🏠 Main Menu")
 
             states[chat_id] = {"step": "deposit_method"}
 
             bot.send_message(
                 chat_id,
-                "💳 Select Deposit Method:",
+                "💳 SELECT DEPOSIT METHOD\n\n"
+                "💗 bKash\n"
+                "🧡 Nagad\n"
+                "💛 Binance (USDT)",
                 reply_markup=kb
             )
             return
 
         elif text == "🎁 Gift Code":
             states[chat_id] = {"step": "redeem"}
-
-            bot.send_message(
-                chat_id,
-                "🎁 Send Your Gift Code:"
-            )
+            bot.send_message(chat_id, "🎁 Send Your Gift Code:")
             return
 
         elif text == "📦 Orders":
             orders = list(
                 db.collection("service_orders")
-                .where("user_id", "==", str(uid))
+                .where(
+                    filter=FieldFilter("user_id", "==", str(uid))
+                )
                 .limit(20)
                 .stream()
             )
 
             if not orders:
-                bot.send_message(
-                    chat_id,
-                    "📦 No Orders Found."
-                )
+                bot.send_message(chat_id, "📦 No Orders Found.")
                 return
 
             for order in orders:
                 d = order.to_dict()
-
                 bot.send_message(
                     chat_id,
                     f"📦 Service: {d.get('service')}\n"
@@ -1217,10 +1130,7 @@ def menu(message):
             return
 
         elif text == "📞 Support":
-            bot.send_message(
-                chat_id,
-                "📞 Contact: @NexoraXeBot"
-            )
+            bot.send_message(chat_id, "📞 Contact: @NexoraXeBot")
             return
 
         elif text == "💼 Tasks":
@@ -1232,10 +1142,9 @@ def menu(message):
                 "step": "task_link",
                 "service": SERVICES[text]
             }
-
             bot.send_message(
                 chat_id,
-                "🌐 Send your Page/Profile or relevant Service Link:"
+                "🌐 Send your Page/Profile or Service Link:"
             )
             return
 
@@ -1245,11 +1154,7 @@ def menu(message):
 
     except Exception as e:
         print("Menu Error:", e)
-
-        bot.reply_to(
-            message,
-            "⚠️ Something went wrong. Try again."
-        )
+        bot.reply_to(message, "⚠️ Something went wrong. Try again.")
 
 
 # =====================================
